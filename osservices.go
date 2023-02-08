@@ -3,6 +3,7 @@ package osservices
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"regexp"
 	"syscall"
@@ -29,16 +30,17 @@ func (o OSServices) GetIPFromMAC(mac string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	log.Println("Debug: running command: '", cmd.Path, "' with args '", cmd.Args, "'")
 	err := cmd.Run()
 
 	if err != nil {
-		fmt.Println("Failed to exec command: ", err)
-		return "", err
+		log.Println("ERROR: Failed to execute command, error: ", err)
+		return "", fmt.Errorf("failed to get IP from MAC-address: %v", err)
 	}
 
 	if len(stderr.String()) > 0 {
-		fmt.Println("STDERR: ", stderr.String())
-		return "", fmt.Errorf("error, STDERR not empty: %s", stderr.String())
+		log.Println("ERROR: Command has been run succesfully, but stderr is not empty: ", stderr.String())
+		return "", fmt.Errorf("failed to get IP from MAC-address, stderr not empty: ", stderr.String())
 	}
 
 	re := regexp.MustCompile(`^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\b`)
@@ -46,8 +48,8 @@ func (o OSServices) GetIPFromMAC(mac string) (string, error) {
 	ip := re.FindString(stdout.String())
 
 	if len(ip) == 0 {
-		fmt.Println("STDOUT: ", stdout.String())
-		return "", fmt.Errorf("error, IP address not found, STDOUT: %s", stdout.String())
+		log.Println("Debug: IP for MAC ", mac, " not found, stdout: ", stdout.String())
+		return "", ErrNotFound
 	}
 
 	return ip, nil
